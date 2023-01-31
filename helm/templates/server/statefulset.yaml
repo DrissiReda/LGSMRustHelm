@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "rustserver.fullname" . }}
+  labels:
+    {{- include "rustserver.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rustserver.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "rustserver.fullname" . }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteMany" ]
+      storageClassName: rustserver
+      resources:
+        requests:
+          storage: 10Gi
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "rustserver.selectorLabels" . | nindent 8 }}
+    spec:
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "rustserver.fullname" . }}-config
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "rustserver.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+          {{- range .Values.service.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .port }}
+              protocol: {{ .protocol }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: data
+            mountPath: /linuxgsm/
+          - name: config
+            mountPath: /linuxgsm/lgsm/config-lgsm/rustserver/rustserver.cfg
+            subPath: rustserver.cfg
+          - name: config
+            mountPath: /linuxgsm/lgsm/config-lgsm/rustserver/secrets-rustserver.cfg
+            subPath: secrets-rustserver.cfg
+          - name: config
+            mountPath: /entrypoint.sh
+            subPath: entrypoint.sh
+          - name: config
+            mountPath: /health-check.sh
+            subPath: health-check.sh
+          livenessProbe:
+            exec:
+              command:
+              - bash
+              - /health-check.sh
+            initialDelaySeconds: 300
+            periodSeconds: 60
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+              - bash
+              - /health-check.sh
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            failureThreshold: 55
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

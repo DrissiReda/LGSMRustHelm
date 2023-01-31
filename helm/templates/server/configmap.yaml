@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rustserver.fullname" . }}-config
+  labels:
+    {{- include "rustserver.labels" . | nindent 4 }}
+data:
+  entrypoint.sh: |
+    #!/bin/bash
+    set -e
+    ./rustserver start
+    tail -f log/console/rustserver-console.log
+  rustserver.cfg: |
+    ##################################
+    ####### Instance Settings ########
+    ##################################
+    # PLACE INSTANCE SETTINGS HERE
+    ## These settings will apply to a specific instance.
+    {{- range .Values.service.ports }}
+    {{ .name }}="{{ .port }}"
+    {{- end }}
+    #serverlevel="Procedural Map"
+    {{- range $name, $value := .Values.config }}
+    {{ $name }}="{{ $value }}"
+    {{- end }}
+  secrets-rustserver.cfg: |
+    ##################################
+    ####### Instance Secrets #########
+    ##################################
+    # PLACE INSTANCE SECRET SETTINGS HERE
+    ## These settings will apply to a specific instance.
+    {{- range $name, $value := .Values.secrets }}
+    {{ $name }}="{{ $value }}"
+    {{- end }}
+  health-check.sh: |
+    #!/bin/bash
+    gamedig --type rust localhost:{{ (index .Values.service.ports 0).port }} | jq -er '.raw'
+

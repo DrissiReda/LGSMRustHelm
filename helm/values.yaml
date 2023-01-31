@@ -1,0 +1,104 @@
+# Default values for rustserver.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: "rustserver"
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "0.1"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: rustserver
+
+secrets:
+  # rust related secrets
+  rconpassword: "<password>"
+config:
+  # rust related settings
+  worldsize: "4800"
+  seed: "1755347231"
+  servername: "Server name"
+  # cronjob script related settings
+  rusthome: /linuxgsm
+  scripthome: "$rusthome/scripts"
+  rustserver: "$rusthome/rustserver"
+  rcon: "$rusthome/rcon"
+  gamehost: rustserver.rustserver
+  rconpath: "$rusthome/rcon"
+  plugin_folder: "$rusthome/serverfiles/oxide/plugins"
+  ext_folder: "$rusthome/serverfiles/RustDedicated_Data/Managed"
+  temp_folder: "/tmp/rustplugins"
+  plugin_link: "https://umod.org/plugins"
+  ext_link: "https://umod.org/extensions"
+
+cronjob:
+  image: {}
+  scripts:
+    #- schedule: "0 */6 * * *"
+    #  name: update
+    #  script: update.sh
+    #- schedule: "0 */12 * * *"
+    #  name: plugin-update
+    #  script: update-plugins.sh
+  annotations: {}
+  # Set curl's insecure option if you use e.g. self-signed certificates
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 2
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 1001
+
+securityContext:
+  # TODO Make changes to set readOnlyRootFS to true
+  capabilities:
+    drop:
+    - ALL
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+
+service:
+  type: NodePort
+  ports:
+  - name: port
+    port: 30015
+    protocol: UDP
+  - name: appport
+    port: 30082
+    protocol: TCP
+  - name: rconport
+    port: 30016
+    protocol: TCP
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    cpu: 4
+    memory: 8092Mi
+  requests:
+    cpu: 5
+    memory: 16384Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

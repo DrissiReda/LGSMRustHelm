@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rustserver.fullname" . }}
+  labels:
+    {{- include "rustserver.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+  {{- range .Values.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: {{ .protocol }}
+      name: {{ .name }}
+      nodePort: {{ .port }}
+  {{- end }}
+  selector:
+    {{- include "rustserver.selectorLabels" . | nindent 4 }}

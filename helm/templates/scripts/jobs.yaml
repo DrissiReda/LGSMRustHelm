@@ -1,0 +1,69 @@
+{{- $fullName := include "rustserver.fullname" . }}
+{{- range .Values.cronjob.scripts }}
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ .name }}-{{ $fullName }}-cron
+  labels:
+spec:
+  schedule: "{{ .schedule }}"
+  concurrencyPolicy: Forbid
+  {{- with $.Values.cronjob.failedJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ . }}
+  {{- end }}
+  {{- with $.Values.cronjob.successfulJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ . }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          volumes:
+          - name: data
+            persistentVolumeClaim:
+              claimName: data-{{ $fullName }}-0
+          - name: config
+            configMap:
+              name: {{ $fullName }}-config
+          restartPolicy: Never
+
+          {{- with $.Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          
+          containers:
+            - name: {{ .name }}
+              image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+              imagePullPolicy: {{ $.Values.image.pullPolicy }}
+              command: [ "bash", "-c", " bash $(eval echo $scripthome)/{{ .script }}" ]
+              env:
+              # include game conf
+              {{- range $name, $value := $.Values.config }}
+              - name: {{ $name }}
+                value: "{{ $value }}"
+              {{- end }}
+              # include ports
+              {{- range $.Values.service.ports }}
+              - name: {{ .name }}
+                value: "{{ .port }}"
+              {{- end }}
+              {{- range $name, $value := $.Values.secrets }}
+              - name: {{$name }}
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ $fullName }}-secrets
+                    key: {{ $name }}
+              {{- end }}
+
+              securityContext:
+                {{- toYaml $.Values.securityContext | nindent 16 }}
+              volumeMounts:
+              - name: data
+                mountPath: /linuxgsm/
+              - name: config
+                mountPath: /linuxgsm/lgsm/config-lgsm/rustserver/rustserver.cfg
+                subPath: rustserver.cfg
+---
+{{- end }}
+
